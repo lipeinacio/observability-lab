@@ -5,9 +5,12 @@
   "description": "Laboratorio progressivo de observabilidade e resposta a incidentes",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "mysql2": "^3.15.3"
   }
 }

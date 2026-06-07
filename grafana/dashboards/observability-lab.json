@@ -27,18 +27,59 @@
       "gridPos": {"h": 7, "w": 8, "x": 16, "y": 0}
     },
     {
+      "type": "stat",
+      "title": "Banco disponível",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_db_available", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{"type": "value", "options": {"0": {"text": "NÃO", "color": "red"}, "1": {"text": "SIM", "color": "green"}}}],
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 7}
+    },
+    {
+      "type": "stat",
+      "title": "Erros de banco",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_db_errors_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 7}
+    },
+    {
+      "type": "stat",
+      "title": "Última consulta ao banco",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_db_query_duration_seconds", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3, "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 2}]}}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 7}
+    },
+    {
       "type": "timeseries",
       "title": "Taxa de requisições",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "rate(lab_requests_total[1m])", "legendFormat": "req/s", "refId": "A"}],
-      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 7}
+      "gridPos": {"h": 9, "w": 8, "x": 0, "y": 13}
     },
     {
       "type": "timeseries",
       "title": "Taxa de erros",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"expr": "rate(lab_errors_total[1m])", "legendFormat": "erros/s", "refId": "A"}],
-      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 7}
+      "gridPos": {"h": 9, "w": 8, "x": 8, "y": 13}
+    },
+    {
+      "type": "timeseries",
+      "title": "Operações e erros no banco",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "rate(lab_db_queries_total[1m])", "legendFormat": "consultas/s", "refId": "A"},
+        {"expr": "rate(lab_db_errors_total[1m])", "legendFormat": "erros/s", "refId": "B"}
+      ],
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 13}
     }
   ],
   "refresh": "5s",
@@ -47,5 +88,5 @@
   "time": {"from": "now-15m", "to": "now"},
   "title": "Observability Lab - Visão Operacional",
   "uid": "observability-lab",
-  "version": 1
+  "version": 2
 }

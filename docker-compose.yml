@@ -7,6 +7,11 @@ services:
       HOST: 0.0.0.0
       PORT: 18080
       STATE_FILE: /app/data/failure-mode
+      DB_HOST: business-db
+      DB_PORT: 3306
+      DB_NAME: orders_app
+      DB_USER: orders_app
+      DB_PASSWORD: ${MYSQL_ORDERS_PASSWORD}
     ports:
       - "18080:18080"
     volumes:
@@ -16,6 +21,30 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    depends_on:
+      business-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [observability]
+
+  business-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ORDERS_ROOT_PASSWORD}
+      MYSQL_DATABASE: orders_app
+      MYSQL_USER: orders_app
+      MYSQL_PASSWORD: ${MYSQL_ORDERS_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - business-db-data:/var/lib/mysql
+      - ./business-db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
     networks: [observability]
 
@@ -135,6 +164,7 @@ services:
 
 volumes:
   app-state:
+  business-db-data:
   mysql-data:
   prometheus-data:
   grafana-data:

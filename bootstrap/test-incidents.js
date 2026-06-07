@@ -83,6 +83,24 @@ async function main() {
     "Observability Lab: operação principal acima de 2 segundos",
     70,
   );
+  await runScenario(
+    auth,
+    "db-unavailable",
+    "Observability Lab: banco de negócio indisponível",
+    70,
+  );
+  await runScenario(
+    auth,
+    "db-error",
+    "Observability Lab: API de pedidos com erro",
+    70,
+  );
+  await runScenario(
+    auth,
+    "db-slow",
+    "Observability Lab: consulta ao banco acima de 2 segundos",
+    90,
+  );
 
   console.log("\nTodos os cenários produziram alerta e recuperação.");
 }

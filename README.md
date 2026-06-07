@@ -6,10 +6,11 @@ a incidentes em uma aplicação com falhas controladas.
 ## O que está funcionando
 
 - aplicação HTTP com painel visual;
+- API de pedidos persistida em um MySQL de negócio separado;
 - liveness e readiness separados;
-- injeção de indisponibilidade, erro HTTP e latência;
-- logs estruturados em JSON;
-- métricas Prometheus;
+- injeção de indisponibilidade, erro HTTP, erro SQL e latência;
+- logs estruturados em JSON com `request_id`;
+- métricas Prometheus da aplicação e do banco;
 - MySQL para persistência do Zabbix;
 - Zabbix Server 7.0 LTS e interface web;
 - Zabbix Agent 2 com CPU e memória;
@@ -25,6 +26,7 @@ a incidentes em uma aplicação com falhas controladas.
 flowchart LR
     U[Operador] --> APP[Painel da aplicação]
     APP --> API[Serviço HTTP]
+    API --> BDB[(MySQL de pedidos)]
     Z[Zabbix Server] -->|HTTP checks| API
     Z -->|Agent protocol| AG[Zabbix Agent 2]
     Z -->|SNMP v2c| SNMP[Alvo SNMP]
@@ -74,7 +76,29 @@ deve ser versionado.
 | `unhealthy` | readiness retorna 503 | aplicação indisponível |
 | `error` | `/work` retorna 500 | operação principal com erro |
 | `slow` | respostas atrasam 3 segundos | operação acima de 2 segundos |
+| `db-unavailable` | conexão ao MySQL é recusada | banco de negócio indisponível |
+| `db-error` | consulta SQL inválida | API de pedidos com erro |
+| `db-slow` | consulta leva 3 segundos | consulta ao banco acima de 2 segundos |
 | `healthy` | restaura o comportamento | trigger normalizada |
+
+## Fluxo de negócio
+
+Crie um pedido pelo formulário do centro de controle ou pela API:
+
+```bash
+curl -i -X POST http://127.0.0.1:18080/api/orders \
+  -H 'content-type: application/json' \
+  -d '{"customer_name":"Empresa Demo","description":"Monitoramento do ambiente"}'
+
+curl -i http://127.0.0.1:18080/api/orders
+```
+
+O MySQL de pedidos é uma dependência real da aplicação. Por isso:
+
+- `/health/live` prova apenas que o processo está vivo;
+- `/health/db` testa a dependência MySQL;
+- `/health/ready` informa se a aplicação está pronta para atender;
+- `/api/orders` mostra o impacto real para o usuário.
 
 ## Testes
 
@@ -91,6 +115,9 @@ make incidents
 ```
 
 O teste ativa cada falha, espera a trigger do Zabbix e confirma a recuperação.
+
+Runbook do incidente de banco:
+[`runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md`](runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md).
 
 Verificação de itens e problemas:
 
@@ -125,3 +152,5 @@ Em 7 de junho de 2026, os seguintes testes passaram:
 - Prometheus retornou `up=1` para a aplicação;
 - Grafana provisionou Prometheus, Zabbix e o dashboard;
 - Zabbix abriu e recuperou alertas para indisponibilidade, HTTP 500 e latência.
+- API criou e listou pedidos no MySQL de negócio;
+- Zabbix abriu e recuperou alertas para banco indisponível, erro SQL e consulta lenta.

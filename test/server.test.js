@@ -28,6 +28,7 @@ test("distinguishes liveness from readiness", async (context) => {
       ...processEnv(),
       PORT: String(port),
       STATE_FILE: stateFile,
+      DB_REQUIRED: "false",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

@@ -113,6 +113,20 @@ async function main() {
     "Work endpoint",
     "http://app:18080/work",
   );
+  await ensureWebScenario(
+    auth,
+    appHost,
+    "Business database health",
+    "Database health endpoint",
+    "http://app:18080/health/db",
+  );
+  await ensureWebScenario(
+    auth,
+    appHost,
+    "Orders API",
+    "List orders",
+    "http://app:18080/api/orders",
+  );
   await ensureTrigger(
     auth,
     "Observability Lab: aplicação indisponível",
@@ -135,6 +149,24 @@ async function main() {
     auth,
     "Observability Lab: operação principal acima de 2 segundos",
     "avg(/observability-lab/web.test.time[App work,Work endpoint,resp],30s)>2",
+    3,
+  );
+  await ensureTrigger(
+    auth,
+    "Observability Lab: banco de negócio indisponível",
+    "last(/observability-lab/web.test.fail[Business database health])<>0",
+    4,
+  );
+  await ensureTrigger(
+    auth,
+    "Observability Lab: API de pedidos com erro",
+    "last(/observability-lab/web.test.fail[Orders API])<>0",
+    4,
+  );
+  await ensureTrigger(
+    auth,
+    "Observability Lab: consulta ao banco acima de 2 segundos",
+    "avg(/observability-lab/web.test.time[Business database health,Database health endpoint,resp],30s)>2",
     3,
   );
 
