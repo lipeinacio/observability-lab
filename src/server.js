@@ -226,6 +226,8 @@ function dashboardHtml() {
     <p><a href="http://localhost:8080" target="_blank">Zabbix</a> ·
     <a href="http://localhost:3000" target="_blank">Grafana</a> ·
     <a href="http://localhost:9090" target="_blank">Prometheus</a> ·
+    <a href="http://localhost:9093" target="_blank">Alertmanager</a> ·
+    <a href="http://localhost:18082" target="_blank">Notificações</a> ·
     <a href="/metrics" target="_blank">Métricas</a></p>
   </div>
 </main>

@@ -129,9 +129,42 @@ services:
       - --storage.tsdb.path=/prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    restart: unless-stopped
+    networks: [observability]
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.2
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --enable-feature=utf8-strict-mode
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093"
+    depends_on: [alert-webhook]
+    restart: unless-stopped
+    networks: [observability]
+
+  alert-webhook:
+    build: ./alert-webhook
+    environment:
+      HOST: 0.0.0.0
+      PORT: 18082
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    ports:
+      - "18082:18082"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:18082/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
     networks: [observability]
 
@@ -202,6 +235,7 @@ volumes:
   business-db-data:
   mysql-data:
   prometheus-data:
+  alertmanager-data:
   loki-data:
   alloy-data:
   grafana-data:

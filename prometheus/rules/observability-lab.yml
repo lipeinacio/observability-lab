@@ -1,0 +1,48 @@
+groups:
+  - name: observability-lab
+    interval: 5s
+    rules:
+      - alert: BusinessDatabaseUnavailable
+        expr: lab_db_available == 0 and lab_db_queries_total > 0
+        for: 10s
+        labels:
+          severity: critical
+          service: observability-lab
+          component: business-db
+        annotations:
+          summary: Banco de pedidos indisponível
+          impact: Usuários não conseguem consultar ou criar pedidos.
+          description: A última verificação da dependência MySQL falhou por mais de 10 segundos.
+          action: Verificar /health/db, logs da aplicação e o runbook do banco.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
+          runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md
+
+      - alert: BusinessDatabaseSlow
+        expr: lab_db_query_duration_seconds > 2
+        for: 10s
+        labels:
+          severity: warning
+          service: observability-lab
+          component: business-db
+        annotations:
+          summary: Consulta ao banco acima de 2 segundos
+          impact: A API de pedidos responde com degradação perceptível.
+          description: A última operação no MySQL levou mais de 2 segundos.
+          action: Correlacionar latência, erros e logs antes de intervir.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
+          runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md
+
+      - alert: ApplicationErrorsDetected
+        expr: increase(lab_errors_total[1m]) > 0
+        for: 10s
+        labels:
+          severity: warning
+          service: observability-lab
+          component: application
+        annotations:
+          summary: Erros detectados na aplicação
+          impact: Uma ou mais operações de usuário falharam no último minuto.
+          description: O contador de respostas com erro aumentou.
+          action: Abrir o Grafana e correlacionar o erro pelo request_id.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
+          runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/CORRELACIONAR_ERRO_POR_REQUEST_ID.md
