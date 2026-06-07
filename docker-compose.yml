@@ -135,6 +135,41 @@ services:
     restart: unless-stopped
     networks: [observability]
 
+  loki:
+    image: grafana/loki:3.7.2
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-config.file=/etc/loki/loki.yml", "-verify-config=true"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [observability]
+
+  alloy:
+    image: grafana/alloy:v1.16.2
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    ports:
+      - "12345:12345"
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [observability]
+
   grafana:
     image: grafana/grafana:12.4.4
     environment:
@@ -148,7 +183,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - "3000:3000"
-    depends_on: [prometheus, zabbix-web]
+    depends_on: [prometheus, loki, zabbix-web]
     restart: unless-stopped
     networks: [observability]
 
@@ -167,6 +202,8 @@ volumes:
   business-db-data:
   mysql-data:
   prometheus-data:
+  loki-data:
+  alloy-data:
   grafana-data:
 
 networks:

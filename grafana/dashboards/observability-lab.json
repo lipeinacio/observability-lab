@@ -80,6 +80,29 @@
         {"expr": "rate(lab_db_errors_total[1m])", "legendFormat": "erros/s", "refId": "B"}
       ],
       "gridPos": {"h": 9, "w": 8, "x": 16, "y": 13}
+    },
+    {
+      "type": "logs",
+      "title": "Logs de erro da aplicação",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{compose_service=\"app\"} | json | level=\"error\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 22}
     }
   ],
   "refresh": "5s",
@@ -88,5 +111,5 @@
   "time": {"from": "now-15m", "to": "now"},
   "title": "Observability Lab - Visão Operacional",
   "uid": "observability-lab",
-  "version": 2
+  "version": 3
 }

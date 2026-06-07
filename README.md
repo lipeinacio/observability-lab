@@ -10,6 +10,7 @@ a incidentes em uma aplicação com falhas controladas.
 - liveness e readiness separados;
 - injeção de indisponibilidade, erro HTTP, erro SQL e latência;
 - logs estruturados em JSON com `request_id`;
+- logs centralizados no Loki e coletados pelo Grafana Alloy;
 - métricas Prometheus da aplicação e do banco;
 - MySQL para persistência do Zabbix;
 - Zabbix Server 7.0 LTS e interface web;
@@ -32,7 +33,10 @@ flowchart LR
     Z -->|SNMP v2c| SNMP[Alvo SNMP]
     Z --> DB[(MySQL)]
     P[Prometheus] -->|scrape /metrics| API
+    API -->|stdout JSON| A[Grafana Alloy]
+    A --> L[Loki]
     G[Grafana] --> P
+    G --> L
     G --> ZW[Zabbix API]
     Z --> ZW[Zabbix Web]
 ```
@@ -54,6 +58,8 @@ container `zabbix-bootstrap` configura hosts, itens, cenários web e triggers.
 | Zabbix | http://localhost:8080 | `Admin` / `zabbix` |
 | Grafana | http://localhost:3000 | `admin` / valor de `GRAFANA_ADMIN_PASSWORD` |
 | Prometheus | http://localhost:9090 | sem login |
+| Loki API | http://localhost:3100 | sem login |
+| Alloy | http://localhost:12345 | sem login |
 
 As senhas deste laboratório são locais e demonstrativas. O arquivo `.env` não
 deve ser versionado.
@@ -119,6 +125,24 @@ O teste ativa cada falha, espera a trigger do Zabbix e confirma a recuperação.
 Runbook do incidente de banco:
 [`runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md`](runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md).
 
+Teste de correlação dos logs:
+
+```bash
+make logs-test
+```
+
+O teste provoca um erro SQL, captura o `x-request-id` da resposta e consulta o
+Loki até encontrar os logs de erro e conclusão da mesma requisição.
+
+Consulta equivalente no Grafana Explore:
+
+```logql
+{compose_service="app"} | json | request_id="ID_DA_REQUISICAO"
+```
+
+Runbook de correlação:
+[`runbooks/CORRELACIONAR_ERRO_POR_REQUEST_ID.md`](runbooks/CORRELACIONAR_ERRO_POR_REQUEST_ID.md).
+
 Verificação de itens e problemas:
 
 ```bash
@@ -154,3 +178,4 @@ Em 7 de junho de 2026, os seguintes testes passaram:
 - Zabbix abriu e recuperou alertas para indisponibilidade, HTTP 500 e latência.
 - API criou e listou pedidos no MySQL de negócio;
 - Zabbix abriu e recuperou alertas para banco indisponível, erro SQL e consulta lenta.
+- Loki correlacionou o erro SQL e o HTTP 500 pelo mesmo `request_id`.
