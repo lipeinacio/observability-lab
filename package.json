@@ -1,0 +1,13 @@
+{
+  "name": "observability-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Laboratorio progressivo de observabilidade e resposta a incidentes",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requisições",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_requests_total", "refId": "A"}],
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "Erros",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_errors_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "Uptime da aplicação",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "lab_process_uptime_seconds", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 0}
+    },
+    {
+      "type": "timeseries",
+      "title": "Taxa de requisições",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(lab_requests_total[1m])", "legendFormat": "req/s", "refId": "A"}],
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 7}
+    },
+    {
+      "type": "timeseries",
+      "title": "Taxa de erros",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rate(lab_errors_total[1m])", "legendFormat": "erros/s", "refId": "A"}],
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 7}
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["observabilidade", "portfolio"],
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "Observability Lab - Visão Operacional",
+  "uid": "observability-lab",
+  "version": 1
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Laboratorio de observabilidade
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/lipe/Documentos/projetos/observability-lab
+ExecStart=/usr/bin/node /home/lipe/Documentos/projetos/observability-lab/src/server.js
+Environment=HOST=127.0.0.1
+Environment=PORT=18080
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
