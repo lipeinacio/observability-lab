@@ -37,6 +37,32 @@ async function waitForStatus(status, since, timeoutSeconds = 60) {
   throw new Error(`Notificação ${status} não chegou em ${timeoutSeconds}s`);
 }
 
+async function ensureNoRedundantApplicationAlert(since) {
+  await sleep(8000);
+  const redundant = (await events()).find(
+    (candidate) =>
+      candidate.status === "firing" &&
+      Date.parse(candidate.received_at) >= since &&
+      candidate.alerts?.some(
+        (alert) => alert.labels?.alertname === "ApplicationErrorsDetected",
+      ),
+  );
+  if (redundant) {
+    throw new Error(
+      "ApplicationErrorsDetected foi enviado para um incidente já explicado pelo banco",
+    );
+  }
+}
+
+function verifyTelegram(event) {
+  if (event.telegram?.enabled && !event.telegram.sent) {
+    throw new Error(
+      `Telegram configurado, mas a entrega falhou: ${event.telegram.error || "erro desconhecido"}`,
+    );
+  }
+  return event.telegram?.enabled ? "Telegram: enviado" : "Telegram: desabilitado";
+}
+
 async function main() {
   await setMode("healthy");
   const startedAt = Date.now();
@@ -46,12 +72,17 @@ async function main() {
   const firing = await waitForStatus("firing", startedAt);
   console.log("FIRING recebido:");
   console.log(firing.message);
+  console.log(verifyTelegram(firing));
 
   await setMode("healthy");
   await fetch(`${appUrl}/health/db`);
   const resolved = await waitForStatus("resolved", startedAt);
   console.log("\nRESOLVED recebido:");
   console.log(resolved.message);
+  console.log(verifyTelegram(resolved));
+
+  await ensureNoRedundantApplicationAlert(startedAt);
+  console.log("Sem notificação redundante de erro da aplicação.");
 }
 
 main().catch(async (error) => {

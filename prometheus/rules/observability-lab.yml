@@ -33,7 +33,7 @@ groups:
           runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md
 
       - alert: ApplicationErrorsDetected
-        expr: increase(lab_errors_total[1m]) > 0
+        expr: increase(lab_errors_total[1m]) - increase(lab_db_errors_total[1m]) > 0
         for: 10s
         labels:
           severity: warning
@@ -42,7 +42,7 @@ groups:
         annotations:
           summary: Erros detectados na aplicação
           impact: Uma ou mais operações de usuário falharam no último minuto.
-          description: O contador de respostas com erro aumentou.
+          description: O contador de erros da aplicação aumentou sem um erro equivalente da dependência MySQL.
           action: Abrir o Grafana e correlacionar o erro pelo request_id.
           dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
           runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/CORRELACIONAR_ERRO_POR_REQUEST_ID.md

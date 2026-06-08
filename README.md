@@ -210,3 +210,4 @@ Em 7 de junho de 2026, os seguintes testes passaram:
 - Zabbix abriu e recuperou alertas para banco indisponível, erro SQL e consulta lenta.
 - Loki correlacionou o erro SQL e o HTTP 500 pelo mesmo `request_id`.
 - Alertmanager enviou notificações `FIRING` e `RESOLVED` ao webhook local.
+- Telegram recebeu notificações reais de abertura e recuperação.

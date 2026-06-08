@@ -21,3 +21,9 @@ inhibit_rules:
     target_matchers:
       - alertname="BusinessDatabaseSlow"
     equal: [service, component]
+
+  - source_matchers:
+      - alertname="BusinessDatabaseUnavailable"
+    target_matchers:
+      - alertname="ApplicationErrorsDetected"
+    equal: [service]
