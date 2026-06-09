@@ -27,3 +27,9 @@ inhibit_rules:
     target_matchers:
       - alertname="ApplicationErrorsDetected"
     equal: [service]
+
+  - source_matchers:
+      - alertname="ApplicationNetworkProbeFailed"
+    target_matchers:
+      - alertname=~"BusinessDatabaseUnavailable|ApplicationErrorsDetected"
+    equal: [service]

@@ -46,3 +46,46 @@ groups:
           action: Abrir o Grafana e correlacionar o erro pelo request_id.
           dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
           runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/CORRELACIONAR_ERRO_POR_REQUEST_ID.md
+
+      - alert: ApplicationNetworkProbeFailed
+        expr: probe_success{job="blackbox-http"} == 0
+        for: 10s
+        labels:
+          severity: critical
+          service: observability-lab
+          component: network
+        annotations:
+          summary: Aplicação inacessível pela rede do monitoramento
+          impact: O monitoramento não consegue alcançar a readiness da aplicação.
+          description: A sonda HTTP falhou por mais de 10 segundos.
+          action: Verificar resolução DNS, conexão TCP, container e porta publicada.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
+          runbook_url: https://github.com/lipeinacio/observability-lab/blob/main/runbooks/APLICACAO_INACESSIVEL_PELA_REDE.md
+
+      - alert: HostMemoryPressure
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 2m
+        labels:
+          severity: warning
+          service: observability-lab
+          component: host
+        annotations:
+          summary: Host com menos de 10% de memória disponível
+          impact: Containers podem sofrer degradação ou encerramento por falta de memória.
+          description: A memória disponível do host permaneceu abaixo de 10% por dois minutos.
+          action: Identificar os maiores consumidores e confirmar pressão antes de intervir.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional
+
+      - alert: HostFilesystemLow
+        expr: node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} < 0.10
+        for: 2m
+        labels:
+          severity: warning
+          service: observability-lab
+          component: host
+        annotations:
+          summary: Host com menos de 10% de espaço livre
+          impact: Bancos, logs e containers podem parar de gravar dados.
+          description: O filesystem raiz permaneceu com menos de 10% livre por dois minutos.
+          action: Localizar crescimento de dados e liberar espaço de forma controlada.
+          dashboard_url: http://localhost:3000/d/observability-lab/observability-lab-visao-operacional

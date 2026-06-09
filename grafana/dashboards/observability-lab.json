@@ -82,6 +82,45 @@
       "gridPos": {"h": 9, "w": 8, "x": 16, "y": 13}
     },
     {
+      "type": "stat",
+      "title": "Sonda HTTP",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "probe_success{job=\"blackbox-http\"}", "refId": "A"}],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{"type": "value", "options": {"0": {"text": "FALHA", "color": "red"}, "1": {"text": "OK", "color": "green"}}}],
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 6, "x": 0, "y": 22}
+    },
+    {
+      "type": "stat",
+      "title": "CPU do host",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "gridPos": {"h": 7, "w": 6, "x": 6, "y": 22}
+    },
+    {
+      "type": "stat",
+      "title": "Memória disponível",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "gridPos": {"h": 7, "w": 6, "x": 12, "y": 22}
+    },
+    {
+      "type": "stat",
+      "title": "Disco raiz disponível",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "100 * node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "gridPos": {"h": 7, "w": 6, "x": 18, "y": 22}
+    },
+    {
       "type": "logs",
       "title": "Logs de erro da aplicação",
       "datasource": {"type": "loki", "uid": "loki"},
@@ -102,7 +141,7 @@
         "sortOrder": "Descending",
         "dedupStrategy": "none"
       },
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 22}
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 29}
     }
   ],
   "refresh": "5s",
@@ -111,5 +150,5 @@
   "time": {"from": "now-15m", "to": "now"},
   "title": "Observability Lab - Visão Operacional",
   "uid": "observability-lab",
-  "version": 3
+  "version": 4
 }

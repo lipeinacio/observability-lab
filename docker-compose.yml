@@ -136,6 +136,25 @@ services:
     restart: unless-stopped
     networks: [observability]
 
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+)($|/)
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+    networks: [observability]
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.27.0
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    restart: unless-stopped
+    networks: [observability]
+
   alertmanager:
     image: prom/alertmanager:v0.32.2
     command:

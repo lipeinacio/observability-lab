@@ -12,6 +12,8 @@ a incidentes em uma aplicação com falhas controladas.
 - logs estruturados em JSON com `request_id`;
 - logs centralizados no Loki e coletados pelo Grafana Alloy;
 - métricas Prometheus da aplicação e do banco;
+- métricas de CPU, memória, disco e rede do host com Node Exporter;
+- sondas HTTP externas à aplicação com Blackbox Exporter;
 - regras Prometheus e roteamento de alertas pelo Alertmanager;
 - webhook local com histórico e suporte opcional ao Telegram;
 - MySQL para persistência do Zabbix;
@@ -35,6 +37,9 @@ flowchart LR
     Z -->|SNMP v2c| SNMP[Alvo SNMP]
     Z --> DB[(MySQL)]
     P[Prometheus] -->|scrape /metrics| API
+    P -->|host metrics| NE[Node Exporter]
+    P -->|HTTP probe| BB[Blackbox Exporter]
+    BB --> API
     P -->|alerts| AM[Alertmanager]
     AM --> WH[Webhook de notificações]
     WH -.->|opcional| TG[Telegram]
@@ -173,6 +178,24 @@ O teste força a indisponibilidade do banco, espera `FIRING`, restaura o
 serviço e confirma `RESOLVED`. Sem credenciais do Telegram, a mensagem continua
 visível no histórico local.
 
+Teste das métricas de infraestrutura e da sonda de rede:
+
+```bash
+make infrastructure-test
+```
+
+Para simular indisponibilidade de rede:
+
+```bash
+docker compose stop app
+# observe probe_success=0 e o alerta ApplicationNetworkProbeFailed
+docker compose start app
+make infrastructure-test
+```
+
+Runbook:
+[`runbooks/APLICACAO_INACESSIVEL_PELA_REDE.md`](runbooks/APLICACAO_INACESSIVEL_PELA_REDE.md).
+
 Verificação de itens e problemas:
 
 ```bash
@@ -199,7 +222,7 @@ Os volumes preservam banco, histórico do Prometheus e dashboards do Grafana.
 
 ## Evidência de aceitação
 
-Em 7 de junho de 2026, os seguintes testes passaram:
+Em 7 e 9 de junho de 2026, os seguintes testes passaram:
 
 - Agent 2 retornou carga de CPU e memória disponível;
 - SNMP retornou `sysName=lab-snmp-target` e uptime;
@@ -211,3 +234,7 @@ Em 7 de junho de 2026, os seguintes testes passaram:
 - Loki correlacionou o erro SQL e o HTTP 500 pelo mesmo `request_id`.
 - Alertmanager enviou notificações `FIRING` e `RESOLVED` ao webhook local.
 - Telegram recebeu notificações reais de abertura e recuperação.
+- Node Exporter expôs CPU, memória, filesystem e rede do host;
+- Blackbox Exporter detectou a parada da aplicação com `probe_success=0`;
+- `ApplicationNetworkProbeFailed` abriu e recuperou após reiniciar a aplicação;
+- webhook e Telegram receberam a abertura e a resolução do incidente de rede.

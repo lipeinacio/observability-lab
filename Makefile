@@ -1,4 +1,4 @@
-.PHONY: up down status logs test incidents logs-test alerts-test verify
+.PHONY: up down status logs test incidents logs-test alerts-test infrastructure-test verify
 
 up:
 	docker compose up -d --build
@@ -23,6 +23,9 @@ logs-test:
 
 alerts-test:
 	node bootstrap/test-alerts.js
+
+infrastructure-test:
+	node bootstrap/test-infrastructure.js
 
 verify:
 	node bootstrap/verify-zabbix.js
