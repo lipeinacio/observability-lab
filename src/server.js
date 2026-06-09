@@ -325,7 +325,7 @@ const server = http.createServer(async (request, response) => {
   metrics.requests += 1;
 
   try {
-    if (mode === "slow" && !url.pathname.startsWith("/api/control")) {
+    if (mode === "slow" && url.pathname === "/work") {
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 

@@ -21,7 +21,8 @@ async function main() {
   const auth = await api("user.login", { username: "Admin", password: "zabbix" });
   const hosts = await api("host.get", {
     filter: { host: ["observability-lab", "lab-target", "lab-snmp-target"] },
-    output: ["hostid", "host", "available", "snmp_available"],
+    output: ["hostid", "host", "name", "description", "available", "snmp_available"],
+    selectTags: "extend",
   }, auth);
   for (const host of hosts) {
     host.items = await api("item.get", {
@@ -29,10 +30,27 @@ async function main() {
       output: ["name", "key_", "lastvalue", "error", "state"],
       sortfield: "name",
     }, auth);
+    host.webScenarios = await api("httptest.get", {
+      hostids: host.hostid,
+      output: ["name", "delay", "status"],
+      selectSteps: ["name", "url", "status_codes", "timeout"],
+      sortfield: "name",
+    }, auth);
   }
   const triggers = await api("trigger.get", {
     hostids: hosts.map((host) => host.hostid),
-    output: ["triggerid", "description", "value", "priority"],
+    output: [
+      "triggerid",
+      "description",
+      "value",
+      "priority",
+      "comments",
+      "url",
+      "url_name",
+      "opdata",
+    ],
+    selectTags: "extend",
+    selectDependencies: ["triggerid", "description"],
   }, auth);
   const problems = await api("problem.get", {
     output: ["name", "severity", "clock"],

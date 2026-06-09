@@ -20,6 +20,8 @@ a incidentes em uma aplicação com falhas controladas.
 - Zabbix Server 7.0 LTS e interface web;
 - Zabbix Agent 2 com CPU e memória;
 - monitoramento HTTP com triggers;
+- problemas com tags de serviço, camada, impacto e torre de escalonamento;
+- correlação entre causa e sintomas para reduzir ruído no painel;
 - alvo SNMP v2c com coleta de OIDs;
 - Grafana com Prometheus e plugin Zabbix;
 - dashboard provisionado automaticamente;
@@ -93,12 +95,29 @@ docker compose up -d --build alert-webhook
 
 1. Abra o centro de controle.
 2. Abra `Monitoring > Problems` no Zabbix.
-3. Abra o dashboard `Observability Lab - Visão Operacional` no Grafana.
-4. No centro de controle, selecione um modo de falha.
-5. Aguarde o intervalo de coleta do Zabbix.
-6. Mostre o problema aberto, os dados e o comportamento da aplicação.
-7. Clique em `Restaurar`.
-8. Mostre o evento de recuperação.
+3. No centro de controle, selecione um modo de falha.
+4. Aguarde o intervalo de coleta do Zabbix.
+5. Leia host, problema, severidade, tags e dados operacionais.
+6. Reconheça o problema e registre o início da triagem.
+7. Abra o runbook pelo link do problema.
+8. Use Latest data, Grafana e logs para confirmar a camada provável.
+9. Trate ou simule o escalonamento para a torre indicada pela tag.
+10. Clique em `Restaurar` e valide a função de negócio.
+11. Mostre o evento de recuperação e registre o encerramento.
+
+Runbook de operação:
+[`runbooks/OPERAR_PROBLEMA_NO_ZABBIX.md`](runbooks/OPERAR_PROBLEMA_NO_ZABBIX.md).
+
+### Hosts no Zabbix
+
+| Nome visível | Coleta | Papel |
+|---|---|---|
+| `APP-LAB-ORDERS` | cenários HTTP | aplicação, API e dependência MySQL |
+| `SRV-LAB-LINUX` | Agent 2 | CPU e memória do servidor |
+| `NET-LAB-SNMP` | SNMP v2c | equipamento de rede simulado |
+
+As chaves técnicas dos hosts permanecem estáveis para preservar expressões e
+histórico.
 
 ### Cenários
 
@@ -106,7 +125,7 @@ docker compose up -d --build alert-webhook
 |---|---|---|
 | `unhealthy` | readiness retorna 503 | aplicação indisponível |
 | `error` | `/work` retorna 500 | operação principal com erro |
-| `slow` | respostas atrasam 3 segundos | operação acima de 2 segundos |
+| `slow` | `/work` atrasa 3 segundos | operação principal acima de 2 segundos |
 | `db-unavailable` | conexão ao MySQL é recusada | banco de negócio indisponível |
 | `db-error` | consulta SQL inválida | API de pedidos com erro |
 | `db-slow` | consulta leva 3 segundos | consulta ao banco acima de 2 segundos |
@@ -146,6 +165,16 @@ make incidents
 ```
 
 O teste ativa cada falha, espera a trigger do Zabbix e confirma a recuperação.
+
+Exercício operacional com reconhecimento, evidências e escalonamento simulado
+para DBA:
+
+```bash
+make dba-drill
+```
+
+O relatório é salvo em `incidents/generated/`. Consulte
+[`incidents/README.md`](incidents/README.md).
 
 Runbook do incidente de banco:
 [`runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md`](runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md).
@@ -231,6 +260,8 @@ Em 7 e 9 de junho de 2026, os seguintes testes passaram:
 - Zabbix abriu e recuperou alertas para indisponibilidade, HTTP 500 e latência.
 - API criou e listou pedidos no MySQL de negócio;
 - Zabbix abriu e recuperou alertas para banco indisponível, erro SQL e consulta lenta.
+- Zabbix diferenciou readiness, HTTP 500, banco indisponível, erro SQL,
+  lentidão e endpoint inacessível sem exibir sintomas redundantes;
 - Loki correlacionou o erro SQL e o HTTP 500 pelo mesmo `request_id`.
 - Alertmanager enviou notificações `FIRING` e `RESOLVED` ao webhook local.
 - Telegram recebeu notificações reais de abertura e recuperação.

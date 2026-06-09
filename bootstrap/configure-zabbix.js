@@ -1,4 +1,5 @@
 const endpoint = "http://zabbix-web:8080/api_jsonrpc.php";
+const { hosts, triggers } = require("./zabbix-resources");
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,11 +42,21 @@ async function ensureGroup(auth, name) {
 }
 
 async function ensureHost(auth, host, groupid, interfaces = []) {
-  const hosts = await api("host.get", { filter: { host } }, auth);
-  if (hosts.length) return hosts[0].hostid;
+  const existing = await api("host.get", { filter: { host: host.host } }, auth);
+  if (existing.length) {
+    await api("host.update", {
+      hostid: existing[0].hostid,
+      name: host.name,
+      description: host.description,
+      tags: host.tags,
+    }, auth);
+    return existing[0].hostid;
+  }
   return (await api("host.create", {
-    host,
-    name: host,
+    host: host.host,
+    name: host.name,
+    description: host.description,
+    tags: host.tags,
     groups: [{ groupid }],
     interfaces,
   }, auth)).hostids[0];
@@ -62,16 +73,36 @@ async function getMainInterface(auth, hostid, type) {
 
 async function ensureItem(auth, hostid, interfaceid, item) {
   const items = await api("item.get", { hostids: hostid, filter: { key_: item.key_ } }, auth);
-  if (!items.length) await api("item.create", { hostid, interfaceid, ...item }, auth);
+  if (!items.length) {
+    await api("item.create", { hostid, interfaceid, ...item }, auth);
+    return;
+  }
+  await api("item.update", {
+    itemid: items[0].itemid,
+    name: item.name,
+    delay: item.delay,
+    ...(item.units ? { units: item.units } : {}),
+  }, auth);
 }
 
-async function ensureWebScenario(auth, hostid, name, stepName, url) {
-  const scenarios = await api("httptest.get", { hostids: hostid, filter: { name } }, auth);
-  if (scenarios.length) return;
-  await api("httptest.create", {
+async function ensureWebScenario(
+  auth,
+  hostid,
+  name,
+  stepName,
+  url,
+  delay = "10s",
+) {
+  const scenarios = await api("httptest.get", {
+    hostids: hostid,
+    filter: { name },
+    output: ["httptestid", "name", "delay", "retries"],
+    selectSteps: ["name", "url", "status_codes", "timeout"],
+  }, auth);
+  const definition = {
     name,
-    hostid,
-    delay: "10s",
+    delay,
+    retries: 1,
     steps: [{
       name: stepName,
       no: 1,
@@ -79,13 +110,64 @@ async function ensureWebScenario(auth, hostid, name, stepName, url) {
       status_codes: "200",
       timeout: "5s",
     }],
-  }, auth);
+  };
+  if (scenarios.length) {
+    const current = scenarios[0];
+    const currentStep = current.steps[0];
+    const desiredStep = definition.steps[0];
+    const unchanged =
+      current.delay === definition.delay &&
+      Number(current.retries) === definition.retries &&
+      currentStep?.name === desiredStep.name &&
+      currentStep?.url === desiredStep.url &&
+      currentStep?.status_codes === desiredStep.status_codes &&
+      currentStep?.timeout === desiredStep.timeout;
+    if (unchanged) return;
+    await api("httptest.update", {
+      httptestid: scenarios[0].httptestid,
+      ...definition,
+    }, auth);
+    return;
+  }
+  await api("httptest.create", { hostid, ...definition }, auth);
 }
 
-async function ensureTrigger(auth, description, expression, priority) {
-  const triggers = await api("trigger.get", { filter: { description } }, auth);
-  if (!triggers.length) {
-    await api("trigger.create", { description, expression, priority }, auth);
+async function ensureTrigger(auth, trigger) {
+  const descriptions = [trigger.description, ...(trigger.aliases || [])];
+  const existing = await api("trigger.get", {
+    filter: { description: descriptions },
+    output: ["triggerid", "description"],
+  }, auth);
+  const definition = {
+    description: trigger.description,
+    expression: trigger.expression,
+    priority: trigger.priority,
+    comments: trigger.comments,
+    url: trigger.url,
+    url_name: "Abrir runbook",
+    opdata: "Último valor: {ITEM.LASTVALUE1}",
+    tags: trigger.tags,
+    manual_close: 0,
+  };
+  if (existing.length) {
+    await api("trigger.update", {
+      triggerid: existing[0].triggerid,
+      ...definition,
+    }, auth);
+    return existing[0].triggerid;
+  }
+  return (await api("trigger.create", definition, auth)).triggerids[0];
+}
+
+async function reconcileDependencies(auth, triggerIds) {
+  for (const [key, trigger] of Object.entries(triggers)) {
+    const dependencies = (trigger.dependencyKeys || []).map((dependencyKey) => ({
+      triggerid: triggerIds[dependencyKey],
+    }));
+    await api("trigger.update", {
+      triggerid: triggerIds[key],
+      dependencies,
+    }, auth);
   }
 }
 
@@ -98,7 +180,7 @@ async function main() {
     await api("host.update", { hostid: defaultHosts[0].hostid, status: 1 }, auth);
   }
 
-  const appHost = await ensureHost(auth, "observability-lab", groupid);
+  const appHost = await ensureHost(auth, hosts.application, groupid);
   await ensureWebScenario(
     auth,
     appHost,
@@ -119,6 +201,7 @@ async function main() {
     "Business database health",
     "Database health endpoint",
     "http://app:18080/health/db",
+    "5s",
   );
   await ensureWebScenario(
     auth,
@@ -127,62 +210,25 @@ async function main() {
     "List orders",
     "http://app:18080/api/orders",
   );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: aplicação indisponível",
-    "last(/observability-lab/web.test.fail[App readiness])<>0",
-    4,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: operação principal com erro",
-    "last(/observability-lab/web.test.fail[App work])<>0",
-    4,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: latência acima de 2 segundos",
-    "avg(/observability-lab/web.test.time[App readiness,Readiness endpoint,resp],30s)>2",
-    3,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: operação principal acima de 2 segundos",
-    "avg(/observability-lab/web.test.time[App work,Work endpoint,resp],30s)>2",
-    3,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: banco de negócio indisponível",
-    "last(/observability-lab/web.test.fail[Business database health])<>0",
-    4,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: API de pedidos com erro",
-    "last(/observability-lab/web.test.fail[Orders API])<>0",
-    4,
-  );
-  await ensureTrigger(
-    auth,
-    "Observability Lab: consulta ao banco acima de 2 segundos",
-    "avg(/observability-lab/web.test.time[Business database health,Database health endpoint,resp],30s)>2",
-    3,
-  );
+  const triggerIds = {};
+  for (const [key, trigger] of Object.entries(triggers)) {
+    triggerIds[key] = await ensureTrigger(auth, trigger);
+  }
+  await reconcileDependencies(auth, triggerIds);
 
-  const agentHost = await ensureHost(auth, "lab-target", groupid, [{
+  const agentHost = await ensureHost(auth, hosts.linux, groupid, [{
     type: 1, main: 1, useip: 0, ip: "", dns: "zabbix-agent2", port: "10050",
   }]);
   const agentInterface = await getMainInterface(auth, agentHost, 1);
   await ensureItem(auth, agentHost, agentInterface, {
-    name: "CPU load 1 minute",
+    name: "Linux: carga média de CPU em 1 minuto",
     key_: "system.cpu.load[all,avg1]",
     type: 0,
     value_type: 0,
     delay: "10s",
   });
   await ensureItem(auth, agentHost, agentInterface, {
-    name: "Available memory",
+    name: "Linux: memória disponível",
     key_: "vm.memory.size[available]",
     type: 0,
     value_type: 3,
@@ -190,7 +236,7 @@ async function main() {
     delay: "10s",
   });
 
-  const snmpHost = await ensureHost(auth, "lab-snmp-target", groupid, [{
+  const snmpHost = await ensureHost(auth, hosts.snmp, groupid, [{
     type: 2,
     main: 1,
     useip: 0,
@@ -201,7 +247,7 @@ async function main() {
   }]);
   const snmpInterface = await getMainInterface(auth, snmpHost, 2);
   await ensureItem(auth, snmpHost, snmpInterface, {
-    name: "SNMP system name",
+    name: "SNMP: nome do equipamento",
     key_: "snmp.sysName",
     type: 20,
     value_type: 1,
@@ -209,7 +255,7 @@ async function main() {
     delay: "30s",
   });
   await ensureItem(auth, snmpHost, snmpInterface, {
-    name: "SNMP uptime",
+    name: "SNMP: tempo de atividade",
     key_: "snmp.sysUpTime",
     type: 20,
     value_type: 3,
@@ -218,7 +264,9 @@ async function main() {
     delay: "30s",
   });
 
-  console.log("Zabbix configurado: aplicação, agente, SNMP, web scenario e triggers.");
+  console.log(
+    "Zabbix reconciliado: hosts, itens, cenários, triggers, tags e correlação.",
+  );
 }
 
 main().catch((error) => {

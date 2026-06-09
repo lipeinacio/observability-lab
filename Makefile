@@ -1,4 +1,4 @@
-.PHONY: up down status logs test incidents logs-test alerts-test infrastructure-test verify
+.PHONY: up down status logs test incidents dba-drill logs-test alerts-test infrastructure-test verify
 
 up:
 	docker compose up -d --build
@@ -17,6 +17,9 @@ test:
 
 incidents:
 	node bootstrap/test-incidents.js
+
+dba-drill:
+	node bootstrap/run-dba-drill.js
 
 logs-test:
 	node bootstrap/test-logs.js

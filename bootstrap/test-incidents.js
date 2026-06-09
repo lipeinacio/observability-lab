@@ -1,5 +1,6 @@
 const zabbixUrl = "http://127.0.0.1:8080/api_jsonrpc.php";
 const appUrl = "http://127.0.0.1:18080";
+const { triggers } = require("./zabbix-resources");
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,11 +53,57 @@ async function waitForTrigger(auth, description, expected, timeoutSeconds) {
   );
 }
 
-async function runScenario(auth, mode, trigger, timeoutSeconds = 45) {
+async function activeProblems(auth) {
+  const problems = await api("problem.get", {
+    output: ["name", "suppressed"],
+    recent: false,
+    selectSuppressionData: "extend",
+  }, auth);
+  return problems;
+}
+
+async function assertProblemVisibility(auth, expected, suppressed = []) {
+  await sleep(2000);
+  const problems = await activeProblems(auth);
+  const visible = problems
+    .filter((problem) => problem.suppressed === "0")
+    .map((problem) => problem.name);
+  const suppressedProblems = problems
+    .filter((problem) => problem.suppressed === "1")
+    .map((problem) => problem.name);
+  for (const description of expected) {
+    if (!visible.includes(description)) {
+      throw new Error(
+        `Problema esperado não está visível: ${description}. Visíveis: ${visible.join(", ")}`,
+      );
+    }
+  }
+  for (const description of suppressed) {
+    if (visible.includes(description)) {
+      throw new Error(`Sintoma deveria estar suprimido: ${description}`);
+    }
+  }
+  console.log(`PROBLEMAS VISÍVEIS: ${visible.join(", ")}`);
+  if (suppressedProblems.length) {
+    console.log(`PROBLEMAS SUPRIMIDOS: ${suppressedProblems.join(", ")}`);
+  }
+}
+
+async function runScenario(
+  auth,
+  mode,
+  trigger,
+  timeoutSeconds = 45,
+  suppressed = [],
+) {
   console.log(`\nCenário: ${mode}`);
   await setMode(mode);
   await waitForTrigger(auth, trigger, "1", timeoutSeconds);
   console.log(`ALERTA: ${trigger}`);
+  for (const description of suppressed) {
+    await waitForTrigger(auth, description, "0", 20);
+  }
+  await assertProblemVisibility(auth, [trigger], suppressed);
 
   await setMode("healthy");
   await waitForTrigger(auth, trigger, "0", timeoutSeconds);
@@ -70,36 +117,45 @@ async function main() {
   await runScenario(
     auth,
     "unhealthy",
-    "Observability Lab: aplicação indisponível",
+    triggers.appReadinessUnavailable.description,
   );
   await runScenario(
     auth,
     "error",
-    "Observability Lab: operação principal com erro",
+    triggers.appWorkError.description,
   );
   await runScenario(
     auth,
     "slow",
-    "Observability Lab: operação principal acima de 2 segundos",
+    triggers.appWorkSlow.description,
     70,
   );
   await runScenario(
     auth,
     "db-unavailable",
-    "Observability Lab: banco de negócio indisponível",
+    triggers.databaseUnavailable.description,
     70,
+    [
+      triggers.appReadinessUnavailable.description,
+      triggers.ordersApiError.description,
+    ],
   );
   await runScenario(
     auth,
     "db-error",
-    "Observability Lab: API de pedidos com erro",
+    triggers.databaseError.description,
     70,
+    [
+      triggers.appReadinessUnavailable.description,
+      triggers.ordersApiError.description,
+    ],
   );
   await runScenario(
     auth,
     "db-slow",
-    "Observability Lab: consulta ao banco acima de 2 segundos",
+    triggers.databaseSlow.description,
     90,
+    [triggers.appReadinessSlow.description],
   );
 
   console.log("\nTodos os cenários produziram alerta e recuperação.");

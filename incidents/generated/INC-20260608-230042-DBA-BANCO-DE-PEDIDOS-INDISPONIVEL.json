@@ -1,0 +1,305 @@
+{
+  "id": "INC-20260608-230042-DBA",
+  "simulated": true,
+  "started_at": "2026-06-09T02:00:42.849Z",
+  "recovered_at": "2026-06-09T02:00:56.250Z",
+  "zabbix": {
+    "trigger": {
+      "triggerid": "25259",
+      "description": "Orders MySQL: dependência indisponível",
+      "priority": "4",
+      "comments": "Impacto: usuários não conseguem consultar ou criar pedidos.\nTriagem: confirmar processo da aplicação vivo e falha exclusiva em /health/db.\nEscalonamento provável: DBA.",
+      "url": "https://github.com/lipeinacio/observability-lab/blob/main/runbooks/BANCO_DE_PEDIDOS_INDISPONIVEL.md",
+      "tags": [
+        {
+          "tag": "service",
+          "value": "orders-api"
+        },
+        {
+          "tag": "layer",
+          "value": "database"
+        },
+        {
+          "tag": "impact",
+          "value": "unavailable"
+        },
+        {
+          "tag": "escalation",
+          "value": "dba"
+        }
+      ]
+    },
+    "problem": {
+      "eventid": "278",
+      "name": "Orders MySQL: dependência indisponível",
+      "clock": "1780970443",
+      "severity": "4",
+      "acknowledged": "0",
+      "opdata": "Último valor: 503",
+      "tags": [
+        {
+          "tag": "environment",
+          "value": "lab"
+        },
+        {
+          "tag": "escalation",
+          "value": "dba"
+        },
+        {
+          "tag": "impact",
+          "value": "unavailable"
+        },
+        {
+          "tag": "layer",
+          "value": "database"
+        },
+        {
+          "tag": "owner",
+          "value": "application"
+        },
+        {
+          "tag": "service",
+          "value": "orders-api"
+        }
+      ]
+    },
+    "event": {
+      "eventid": "278",
+      "name": "Orders MySQL: dependência indisponível",
+      "clock": "1780970443",
+      "severity": "4",
+      "acknowledged": "1",
+      "r_eventid": "279",
+      "acknowledges": [
+        {
+          "clock": "1780970448",
+          "message": "Fato: processo e endpoint HTTP permanecem ativos; /health/db e /api/orders retornam 503. Interpretação: falha isolada na dependência MySQL. Ação: escalonamento simulado para DBA com evidências.",
+          "action": "4",
+          "username": "Admin"
+        },
+        {
+          "clock": "1780970444",
+          "message": "Triagem iniciada. Impacto em validação. Verificando função de negócio, processo e dependência MySQL.",
+          "action": "6",
+          "username": "Admin"
+        }
+      ],
+      "tags": [
+        {
+          "tag": "service",
+          "value": "orders-api"
+        },
+        {
+          "tag": "layer",
+          "value": "database"
+        },
+        {
+          "tag": "impact",
+          "value": "unavailable"
+        },
+        {
+          "tag": "escalation",
+          "value": "dba"
+        },
+        {
+          "tag": "environment",
+          "value": "lab"
+        },
+        {
+          "tag": "owner",
+          "value": "application"
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "endpoints": [
+      {
+        "endpoint": "/health/live",
+        "status": 200,
+        "duration_ms": 3,
+        "request_id": "d39557f9-f19e-4754-852d-6c2c3b70a6e8",
+        "body": {
+          "status": "alive",
+          "pid": 1
+        }
+      },
+      {
+        "endpoint": "/health/ready",
+        "status": 503,
+        "duration_ms": 6,
+        "request_id": "ce217435-3b70-414e-ad74-da928e933076",
+        "body": {
+          "status": "not-ready",
+          "dependency": "business-db",
+          "mode": "db-unavailable"
+        }
+      },
+      {
+        "endpoint": "/health/db",
+        "status": 503,
+        "duration_ms": 6,
+        "request_id": "acfd00e2-96df-414d-a63f-4824f8238d6c",
+        "body": {
+          "error": "database unavailable",
+          "code": "ECONNREFUSED",
+          "request_id": "acfd00e2-96df-414d-a63f-4824f8238d6c"
+        }
+      },
+      {
+        "endpoint": "/api/orders",
+        "status": 503,
+        "duration_ms": 6,
+        "request_id": "b0e455e1-5959-4411-98ad-7125a0a830b5",
+        "body": {
+          "error": "database unavailable",
+          "code": "ECONNREFUSED",
+          "request_id": "b0e455e1-5959-4411-98ad-7125a0a830b5"
+        }
+      }
+    ],
+    "metrics": {
+      "database_available": [
+        {
+          "metric": {
+            "__name__": "lab_db_available",
+            "instance": "app:18080",
+            "job": "observability-lab"
+          },
+          "value": 0
+        }
+      ],
+      "database_errors_total": [
+        {
+          "metric": {
+            "__name__": "lab_db_errors_total",
+            "instance": "app:18080",
+            "job": "observability-lab"
+          },
+          "value": 20
+        }
+      ],
+      "process_up": [
+        {
+          "metric": {
+            "__name__": "up",
+            "instance": "app:18080",
+            "job": "observability-lab"
+          },
+          "value": 1
+        }
+      ]
+    }
+  },
+  "escalation": {
+    "tower": "DBA",
+    "message": "[SIMULAÇÃO] INC-20260608-230042-DBA\nSeveridade: alta\nInício: 08/06/2026, 23:00:42\nHost/serviço: APP-LAB-ORDERS / orders-api\nImpacto: usuários não conseguem consultar ou criar pedidos.\nSintoma: /health/live=200; /health/ready=503; /health/db=503; /api/orders=503.\nEvidências: Zabbix indica camada database e escalation=dba; lab_db_available=0.\nTestes executados: processo, readiness, health do banco, API e métricas.\nHipótese: conexão da aplicação com o MySQL de pedidos indisponível.\nAção solicitada: validar instância business-db e conexões na porta 3306.\nContato: operador do Observability Lab."
+  },
+  "recovery": {
+    "endpoints": [
+      {
+        "endpoint": "/health/live",
+        "status": 200,
+        "duration_ms": 2,
+        "request_id": "b0dfb2a1-2fea-489a-a774-8c21c1bf7add",
+        "body": {
+          "status": "alive",
+          "pid": 1
+        }
+      },
+      {
+        "endpoint": "/health/ready",
+        "status": 200,
+        "duration_ms": 3,
+        "request_id": "68b0e0fa-ac32-49c9-ab3d-9f45d39df286",
+        "body": {
+          "status": "ready",
+          "mode": "healthy"
+        }
+      },
+      {
+        "endpoint": "/health/db",
+        "status": 200,
+        "duration_ms": 2,
+        "request_id": "eced754f-232e-4af5-b4f4-b1c6c5032d0b",
+        "body": {
+          "status": "available",
+          "mode": "healthy"
+        }
+      },
+      {
+        "endpoint": "/api/orders",
+        "status": 200,
+        "duration_ms": 3,
+        "request_id": "fb22944d-2b53-4af5-8e33-c25872d93947",
+        "body": {
+          "orders_count": 3
+        }
+      }
+    ],
+    "metrics": {
+      "database_available": [
+        {
+          "metric": {
+            "__name__": "lab_db_available",
+            "instance": "app:18080",
+            "job": "observability-lab"
+          },
+          "value": 1
+        }
+      ],
+      "process_up": [
+        {
+          "metric": {
+            "__name__": "up",
+            "instance": "app:18080",
+            "job": "observability-lab"
+          },
+          "value": 1
+        }
+      ]
+    }
+  },
+  "communication": {
+    "initial": "[INCIDENTE EM ANÁLISE]\nInício: 08/06/2026, 23:00:42\nServiço: orders-api\nImpacto confirmado: consultas e criação de pedidos indisponíveis.\nAlerta: Orders MySQL: dependência indisponível\nAções: validação de aplicação e dependência em andamento.\nResponsável: Observabilidade Lab.",
+    "update": "[ATUALIZAÇÃO]\nEstado: aplicação viva com dependência MySQL indisponível.\nEvidências: live=200, ready=503, db=503, orders=503, lab_db_available=0.\nAção: escalonamento simulado para DBA.\nRisco: indisponibilidade total do fluxo de pedidos.",
+    "resolved": "[INCIDENTE RESOLVIDO]\nInício: 08/06/2026, 23:00:42\nRecuperação: 08/06/2026, 23:00:56\nImpacto: consultas e criação de pedidos indisponíveis durante o exercício.\nCausa: indisponibilidade controlada da conexão com o MySQL.\nValidação: Zabbix recuperado e endpoints críticos em HTTP 200.\nPendência: manter correlação e runbook atualizados."
+  },
+  "timeline": [
+    {
+      "at": "2026-06-09T02:00:42.867Z",
+      "action": "Falha controlada ativada",
+      "result": "Modo db-unavailable"
+    },
+    {
+      "at": "2026-06-09T02:00:44.929Z",
+      "action": "Problema detectado no Zabbix",
+      "result": "Orders MySQL: dependência indisponível, eventid 278"
+    },
+    {
+      "at": "2026-06-09T02:00:44.962Z",
+      "action": "Problema reconhecido",
+      "result": "Triagem iniciada. Impacto em validação. Verificando função de negócio, processo e dependência MySQL."
+    },
+    {
+      "at": "2026-06-09T02:00:48.006Z",
+      "action": "Impacto confirmado",
+      "result": "Processo vivo; readiness, banco e pedidos indisponíveis"
+    },
+    {
+      "at": "2026-06-09T02:00:48.036Z",
+      "action": "Escalonamento simulado para DBA",
+      "result": "Fato: processo e endpoint HTTP permanecem ativos; /health/db e /api/orders retornam 503. Interpretação: falha isolada na dependência MySQL. Ação: escalonamento simulado para DBA com evidências."
+    },
+    {
+      "at": "2026-06-09T02:00:50.045Z",
+      "action": "Ação simulada do DBA",
+      "result": "Disponibilidade da dependência restaurada"
+    },
+    {
+      "at": "2026-06-09T02:00:56.250Z",
+      "action": "Recuperação validada",
+      "result": "Zabbix recuperado e endpoints críticos em HTTP 200"
+    }
+  ]
+}
